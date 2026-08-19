@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>班级志愿服务时长统计</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+.container {
+  max-width: 520px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+.header {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  padding: 24px 20px;
+  text-align: center;
+  color: #fff;
+}
+.header h1 { font-size: 20px; margin-bottom: 4px; }
+.header p { font-size: 13px; opacity: 0.9; }
+.form-area {
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.form-row input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.form-row input:focus { border-color: #4facfe; }
+.btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-add {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(79,172,254,0.35);
+}
+.btn-export {
+  background: linear-gradient(135deg, #43e97b, #38f9d7);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(67,233,123,0.3);
+}
+.btn-clear {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(245,87,108,0.3);
+}
+.stats {
+  padding: 16px 20px;
+  background: #f8f9ff;
+  display: flex;
+  justify-content: space-around;
+  border-bottom: 1px solid #f0f0f0;
+}
+.stat-item { text-align: center; }
+.stat-num { font-size: 22px; font-weight: bold; color: #4facfe; }
+.stat-label { font-size: 12px; color: #999; margin-top: 2px; }
+.table-area { padding: 10px 20px 20px; }
+.table-area h3 { font-size: 14px; color: #555; margin-bottom: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f0f4ff; color: #555; padding: 8px 6px; text-align: center; border-bottom: 2px solid #e0e8ff; }
+td { padding: 8px 6px; text-align: center; border-bottom: 1px solid #f5f5f5; }
+tr:hover td { background: #fafbff; }
+.empty-tip { text-align: center; color: #bbb; font-size: 13px; padding: 20px 0; }
+.rank-1 { color: #f5a623; font-weight: bold; }
+.rank-2 { color: #a0a0a0; font-weight: bold; }
+.rank-3 { color: #cd7f32; font-weight: bold; }
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: #333; color: #fff; padding: 10px 20px; border-radius: 8px;
+  font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📋 班级志愿服务时长统计</h1>
+    <p>输入姓名与时长，自动汇总 · 实时排名</p>
+  </div>
+
+  <div class="form-area">
+    <div class="form-row">
+      <input id="nameInput" placeholder="请输入姓名" />
+      <input id="hoursInput" placeholder="服务时长(小时)" type="number" min="0" step="0.5" style="max-width:140px" />
+    </div>
+    <div class="form-row">
+      <input id="noteInput" placeholder="备注（可选，如：博物馆研学）" style="flex:3" />
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-add" onclick="addRecord()">➕ 添加记录</button>
+      <button class="btn btn-export" onclick="exportCSV()">📥 导出CSV</button>
+      <button class="btn btn-clear" onclick="clearAll()">🗑 清空</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-item"><div class="stat-num" id="totalHours">0</div><div class="stat-label">总时长(小时)</div></div>
+    <div class="stat-item"><div class="stat-num" id="avgHours">0</div><div class="stat-label">人均(小时)</div></div>
+    <div class="stat-item"><div class="stat-num" id="personCount">0</div><div class="stat-label">记录条数</div></div>
+  </div>
+
+  <div class="table-area">
+    <h3>📊 统计明细</h3>
+    <table>
+      <thead>
+        <tr><th>#</th><th>姓名</th><th>时长</th><th>备注</th><th>操作</th></tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="5" class="empty-tip">暂无数据，请添加记录 ↑</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'volunteer_data_v1';
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1500);
+}
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); render(); }
+
+function addRecord() {
+  const name = document.getElementById('nameInput').value.trim();
+  const hours = parseFloat(document.getElementById('hoursInput').value);
+  const note = document.getElementById('noteInput').value.trim();
+  if (!name) return toast('⚠ 请输入姓名');
+  if (isNaN(hours) || hours <= 0) return toast('⚠ 请输入有效时长');
+  data.push({ name, hours, note: note || '-', time: Date.now() });
+  document.getElementById('nameInput').value = '';
+  document.getElementById('hoursInput').value = '';
+  document.getElementById('noteInput').value = '';
+  save(); toast('✅ 已添加');
+}
+
+function deleteRow(idx) { data.splice(idx,1); save(); toast('已删除'); }
+
+function clearAll() {
+  if (data.length===0) return;
+  if (!confirm('确定要清空所有记录吗？')) return;
+  data=[]; save(); toast('已清空');
+}
+
+function exportCSV() {
+  if (data.length===0) return toast('暂无数据可导出');
+  let csv='\uFEFF姓名,时长(小时),备注,日期\n';
+  data.forEach(d=>{csv+=`${d.name},${d.hours},${d.note},${new Date(d.time).toLocaleDateString()}\n`;});
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='志愿服务时长统计.csv'; a.click();
+  URL.revokeObjectURL(url); toast('✅ 已导出');
+}
+
+function render() {
+  const tbody=document.getElementById('tbody');
+  if (data.length===0) {
+    tbody.innerHTML='<tr><td colspan="5" class="empty-tip">暂无数据，请添加记录 ↑</td></tr>';
+  } else {
+    const sorted=[...data].sort((a,b)=>b.hours-a.hours);
+    const rankMap={};
+    sorted.forEach((d,i)=>{rankMap[d.name+d.time]=i+1;});
+    tbody.innerHTML=data.slice().reverse().map((d,i)=>{
+      const rk=rankMap[d.name+d.time];
+      const cls=rk===1?'rank-1':rk===2?'rank-2':rk===3?'rank-3':'';
+      return `<tr>
+        <td class="${cls}">${rk}</td>
+        <td>${d.name}</td>
+        <td>${d.hours}</td>
+        <td style="font-size:12px;color:#888">${d.note}</td>
+        <td><button onclick="deleteRow(${data.indexOf(d)})" style="border:none;background:none;color:#f5576c;cursor:pointer;font-size:13px">删除</button></td>
+      </tr>`;
+    }).join('');
+  }
+  const total=data.reduce((s,d)=>s+d.hours,0);
+  document.getElementById('totalHours').textContent=total.toFixed(1);
+  document.getElementById('avgHours').textContent=data.length?(total/data.length).toFixed(1):'0';
+  document.getElementById('personCount').textContent=data.length;
+}
+
+document.getElementById('hoursInput').addEventListener('keydown',e=>{if(e.key==='Enter')addRecord();});
+document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')addRecord();});
+render();
+</script>
+</body>
+</html>
